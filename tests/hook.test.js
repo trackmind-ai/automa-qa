@@ -127,6 +127,48 @@ check('malformed or empty stdin is silent and exits 0', () => {
   assert(out === '', 'expected silence on bad stdin');
 });
 
+// ── hooks.json launches the shell wrapper, exactly as Claude Code would ────
+const PLUGIN_ROOT = path.join(__dirname, '..', 'plugins', 'automaqa').split(path.sep).join('/');
+const HOOKS = JSON.parse(require('fs').readFileSync(path.join(PLUGIN_ROOT, 'hooks', 'hooks.json'), 'utf8')).hooks;
+const hookCommands = Object.values(HOOKS).flat().flatMap((entry) => entry.hooks.map((h) => h.command));
+
+/** Run a command string from hooks.json through bash with CLAUDE_PLUGIN_ROOT set. */
+function runHookCommand(command, payload) {
+  return execFileSync('bash', ['-c', command], {
+    encoding: 'utf8',
+    input: JSON.stringify(payload),
+    env: { ...process.env, CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT },
+  });
+}
+
+check('hooks.json calls hook.sh by its CLAUDE_PLUGIN_ROOT path, not a bare node command', () => {
+  assert(hookCommands.length === 2, `expected one pre and one post hook, got ${hookCommands.length}`);
+  for (const c of hookCommands) {
+    assert(c.includes('${CLAUDE_PLUGIN_ROOT}/scripts/hooks/hook.sh'), `not the shell launcher: ${c}`);
+    assert(!/^\s*node\b/.test(c), `still a bare node command: ${c}`);
+  }
+});
+
+check('the launcher script is executable-safe: LF line endings and a bash shebang', () => {
+  const sh = require('fs').readFileSync(path.join(PLUGIN_ROOT, 'scripts', 'hooks', 'hook.sh'), 'utf8');
+  assert(sh.startsWith('#!/usr/bin/env bash\n'), 'missing bash shebang with LF');
+  assert(!sh.includes('\r'), 'hook.sh contains CRLF, which breaks it on Linux and macOS');
+});
+
+check('the pre and post hook commands, run through bash, route real tool calls', () => {
+  const [pre, post] = hookCommands;
+  assert(/Playwright test starting/.test(runHookCommand(pre, bash('npx playwright test'))), 'pre via hook.sh');
+  assert(/Maestro run complete/.test(runHookCommand(post, bash('maestro test flows/a.yaml'))), 'post via hook.sh');
+  assert(/File written/.test(runHookCommand(post, write('specs/login/spec.md'))), 'post write via hook.sh');
+});
+
+check('the hook commands stay silent for unrelated tool calls', () => {
+  const [pre, post] = hookCommands;
+  assert(runHookCommand(pre, bash('ls -la')) === '', 'pre printed for ls');
+  assert(runHookCommand(post, bash('git status')) === '', 'post printed for git status');
+  assert(runHookCommand(post, write('src/app.ts')) === '', 'post printed for src/app.ts');
+});
+
 // ── Summary ────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failures.length} failed\n`);
 if (failures.length) {

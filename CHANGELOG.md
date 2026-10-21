@@ -10,6 +10,7 @@ All notable changes to this project are documented here. The format follows
 - Install steps in the README, `docs/setup.md`, `SAMPLE.md` and the plugin README now use the shared Trackmind marketplace (`/plugin marketplace add trackmind-ai/marketplace`, then `/plugin install automaqa@trackmind`), the same route as the other Trackmind plugins.
 - The in-repo dev marketplace is renamed `trackmind-automaqa-dev` (was `trackmind-automaqa`) and marked local-development-only, so it cannot be confused with the published catalog. Contributors who added the old name should re-add it; `CONTRIBUTING.md` has the new name.
 - `CONTRIBUTING.md`: fix the `cd` and path after cloning `automa-qa`.
+- Hooks now start through `scripts/hooks/hook.sh`, a three-line bash launcher called by its `${CLAUDE_PLUGIN_ROOT}` path, which runs `hook.js`. The plugin directory follows shell launchers by path but not a bare `node` command in a subfolder plugin, so this avoids a reviewer hold. Behaviour is unchanged, and the hooks still print nothing when Node.js is missing.
 
 ## [0.1.1] — 2026-10-16
 
