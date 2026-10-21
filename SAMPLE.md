@@ -28,8 +28,8 @@ below are copied from an actual run, not written by hand.
 Install the plugin in Claude Code:
 
 ```
-/plugin marketplace add trackmind-ai/automa-qa
-/plugin install automaqa@trackmind-automaqa
+/plugin marketplace add trackmind-ai/marketplace
+/plugin install automaqa@trackmind
 ```
 
 Then open a terminal in the project you want to test. AutomaQA writes into **your**

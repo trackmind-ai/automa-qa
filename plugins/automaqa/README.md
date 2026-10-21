@@ -9,8 +9,8 @@ ones instead of deleting them.
 ## Install
 
 ```bash
-/plugin marketplace add trackmind-ai/automa-qa
-/plugin install automaqa@trackmind-automaqa
+/plugin marketplace add trackmind-ai/marketplace
+/plugin install automaqa@trackmind
 ```
 
 Then run `/automaqa:setup` (or `/automaqa:setup web`, `/automaqa:setup mobile`).
