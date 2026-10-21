@@ -34,8 +34,8 @@ approve the generated specs.
 
 Nothing here is hidden. This is the complete list.
 
-**Hooks (run automatically).** Two hooks run `node scripts/hooks/hook.js` after Bash and
-Write tool calls (and before Bash calls). They read the tool call, and print a one-line
+**Hooks (run automatically).** Two hooks run `bash scripts/hooks/hook.sh`, a three-line launcher
+for `scripts/hooks/hook.js`, after Bash and Write tool calls (and before Bash calls). They read the tool call, and print a one-line
 reminder only when you run `playwright test`, `maestro test`, `npm install` or
 `extract_cases.js`, or write a `spec.md`, `*.spec.ts`, Maestro `.yaml` or report `.html`
 file. They print nothing for any other command. They make no network requests, write no
