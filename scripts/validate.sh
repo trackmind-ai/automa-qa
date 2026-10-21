@@ -52,7 +52,7 @@ for f in plugins/automaqa/scripts/pipeline/*.js plugins/automaqa/scripts/hooks/*
 done
 
 echo "==> Shell scripts parse"
-for f in scripts/*.sh; do
+for f in scripts/*.sh plugins/automaqa/scripts/hooks/*.sh; do
   if bash -n "$f" 2>/dev/null; then pass "$(basename "$f")"; else fail "$(basename "$f") has a syntax error"; fi
 done
 

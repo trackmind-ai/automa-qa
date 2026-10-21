@@ -1,5 +1,5 @@
 {
-  "_comment": "One pre and one post hook. scripts/hooks/hook.js reads the tool payload on stdin and prints guidance only for AutomaQA-relevant commands and files (playwright test, maestro test, npm install, extract_cases, spec/report writes); every other Bash call or Write is silent. Node.js is the only runtime dependency (already required for Playwright). Informational only; fails silently if Node.js is unavailable.",
+  "_comment": "One pre and one post hook. scripts/hooks/hook.sh (a thin bash launcher for hook.js) passes the tool payload on stdin and prints guidance only for AutomaQA-relevant commands and files (playwright test, maestro test, npm install, extract_cases, spec/report writes); every other Bash call or Write is silent. Node.js is the only runtime dependency (already required for Playwright). Informational only; fails silently if Node.js is unavailable.",
 
   "hooks": {
 
@@ -9,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/hook.js\" pre",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/hook.sh\" pre",
             "timeout": 5
           }
         ]
@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/hook.js\" post",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/hook.sh\" post",
             "timeout": 5
           }
         ]
