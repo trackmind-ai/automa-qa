@@ -24,15 +24,15 @@ See [Repository layout](README.md#repository-layout).
 
 ```bash
 git clone https://github.com/trackmind-ai/automa-qa
-cd automaqa
+cd automa-qa
 npm install
 ```
 
 Point Claude Code at your working copy to try it:
 
 ```bash
-/plugin marketplace add ./path/to/automaqa
-/plugin install automaqa@trackmind-automaqa
+/plugin marketplace add ./path/to/automa-qa
+/plugin install automaqa@trackmind-automaqa-dev
 ```
 
 Then validate before opening a PR:

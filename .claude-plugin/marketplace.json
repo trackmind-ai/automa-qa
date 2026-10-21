@@ -1,10 +1,10 @@
 {
-  "name": "trackmind-automaqa",
+  "name": "trackmind-automaqa-dev",
   "owner": {
     "name": "Trackmind",
     "url": "https://github.com/trackmind-ai/automa-qa"
   },
-  "description": "Local-development catalog for the AutomaQA plugin. The published catalog is trackmind-ai/marketplace.",
+  "description": "LOCAL DEVELOPMENT ONLY. Lets contributors install this checkout as a plugin. The published catalog is trackmind-ai/marketplace, whose marketplace name is `trackmind` — this one is deliberately named differently so adding it can never replace the published one.",
   "plugins": [
     {
       "source": "./plugins/automaqa",
