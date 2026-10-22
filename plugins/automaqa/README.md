@@ -70,6 +70,28 @@ writes inside the plugin folder.
 **Data.** Test cases you import are read locally and become Markdown specs on disk. They
 are seen by Claude as part of your conversation, like any file you ask it to read.
 
+## Try it
+
+Three prompts to start with:
+
+1. `/automaqa:setup web`. Installs and checks Playwright and ends with a status table.
+2. "Import the test cases from `login-cases.xlsx` into specs for my review." Reads the file
+   and writes one `spec.md` per feature for you to approve.
+3. "I approve the login spec. Write the Playwright tests, run them, and show me the report."
+   Writes and runs the tests, then produces a versioned HTML report.
+
+## Troubleshooting
+
+- **Setup says a tool is missing that you know is installed.** It is not on `PATH` for the
+  shell Claude Code started. Check `node -v` in a fresh terminal and restart Claude Code.
+- **Maestro MCP is unavailable right after setup.** MCP servers load at startup, so restart
+  Claude Code, then check `claude mcp list`.
+- **No report after a run.** Check that `playwright.config.ts` lists
+  `./tests/versioned-reporter.ts` as a reporter, or re-run `/automaqa:setup`.
+
+More answers are in the full
+[troubleshooting guide](https://github.com/trackmind-ai/automa-qa/blob/main/docs/troubleshooting.md).
+
 ## Requirements
 
 Node.js LTS. For mobile: Java 11+, Maestro, and a booted emulator, simulator or device.
