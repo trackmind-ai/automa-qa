@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Changed
+- Plugin README: added three example prompts and a short troubleshooting section.
 - Install steps in the README, `docs/setup.md`, `SAMPLE.md` and the plugin README now use the shared Trackmind marketplace (`/plugin marketplace add trackmind-ai/marketplace`, then `/plugin install automaqa@trackmind`), the same route as the other Trackmind plugins.
 - The in-repo dev marketplace is renamed `trackmind-automaqa-dev` (was `trackmind-automaqa`) and marked local-development-only, so it cannot be confused with the published catalog. Contributors who added the old name should re-add it; `CONTRIBUTING.md` has the new name.
 - `CONTRIBUTING.md`: fix the `cd` and path after cloning `automa-qa`.
