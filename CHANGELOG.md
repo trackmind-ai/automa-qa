@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-11-06
+
+### Removed
+- The plugin's two command hooks (`hooks/hooks.json`, `scripts/hooks/hook.sh` and `hook.js`) and their tests. The plugin directory accepts hooks of type `command` only from Verified organizations and refused v0.1.2 for them. The hooks only printed one-line reminders after Playwright and Maestro runs, so nothing else changes.
+
 ## [0.1.2] — 2026-11-06
 
 Fixes for the plugin directory's automatic review.

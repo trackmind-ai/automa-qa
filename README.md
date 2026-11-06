@@ -166,8 +166,7 @@ plugins/automaqa/
   agents/                         test-orchestrator — routes web/mobile/both
   skills/                         setup, import-cases, playwright-e2e, playwright-skill,
                                   maestro-e2e, maestro-skill, page-objects, self-healing
-  hooks/hooks.json                Pre/post run guidance hooks
-  scripts/                        Intake pipeline + hook implementation (Node.js)
+  scripts/                        Intake pipeline (Node.js)
   templates/                      playwright.config.ts, versioned-reporter.ts,
                                   pages/support/healing-locator.ts,
                                   tests/support/{flake-store,quarantine}.ts
@@ -197,7 +196,7 @@ is never modified.
 ```bash
 npm install
 npm run validate     # manifests, frontmatter, typecheck, unit tests, publish checks
-npm test             # intake parser + hook notifier + template behaviour tests
+npm test             # intake parser + template behaviour tests
 npm run typecheck    # TypeScript templates
 npm run test:docs    # SAMPLE.md's code examples still compile against the shipped templates
 ```

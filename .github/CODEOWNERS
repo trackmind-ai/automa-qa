@@ -10,7 +10,6 @@
 
 /.claude-plugin/marketplace.json           @trackmind-ai/maintainers
 /plugins/automaqa/.claude-plugin/plugin.json @trackmind-ai/maintainers
-/plugins/automaqa/hooks/                   @trackmind-ai/maintainers
 /scripts/                                  @trackmind-ai/maintainers
 /.github/                                  @trackmind-ai/maintainers
 
