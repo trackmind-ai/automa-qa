@@ -20,7 +20,7 @@ run_template_tests() {
 }
 
 echo "==> Manifests parse as JSON"
-for f in .claude-plugin/marketplace.json plugins/automaqa/.claude-plugin/plugin.json plugins/automaqa/hooks/hooks.json; do
+for f in .claude-plugin/marketplace.json plugins/automaqa/.claude-plugin/plugin.json; do
   if [ ! -f "$f" ]; then fail "$f missing"; continue; fi
   if node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" 2>/dev/null; then
     pass "$f"
@@ -47,12 +47,12 @@ for f in plugins/automaqa/agents/*.md; do
 done
 
 echo "==> Node scripts parse"
-for f in plugins/automaqa/scripts/pipeline/*.js plugins/automaqa/scripts/hooks/*.js; do
+for f in plugins/automaqa/scripts/pipeline/*.js; do
   if node --check "$f" 2>/dev/null; then pass "$(basename "$f")"; else fail "$(basename "$f") has a syntax error"; fi
 done
 
 echo "==> Shell scripts parse"
-for f in scripts/*.sh plugins/automaqa/scripts/hooks/*.sh; do
+for f in scripts/*.sh; do
   if bash -n "$f" 2>/dev/null; then pass "$(basename "$f")"; else fail "$(basename "$f") has a syntax error"; fi
 done
 
@@ -113,12 +113,12 @@ else
   fail "intake parser tests failed"
 fi
 
-echo "==> Hook notifier unit tests"
-if node tests/hook.test.js >/dev/null 2>&1; then
-  pass "hook.test.js"
+echo "==> The plugin ships no command hooks"
+# The directory refuses hooks of type "command" from organizations that are not Verified.
+if [ -e plugins/automaqa/hooks/hooks.json ]; then
+  fail "plugins/automaqa/hooks/hooks.json exists — the directory refuses command hooks"
 else
-  node tests/hook.test.js 2>&1 | tail -12 | sed 's/^/         /'
-  fail "hook notifier tests failed"
+  pass "no hooks.json"
 fi
 
 echo "==> Template behaviour tests (flake-store, healing-locator)"
