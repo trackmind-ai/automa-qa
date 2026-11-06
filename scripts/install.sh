@@ -39,13 +39,41 @@ if [ "$SCOPE" != "mobile" ]; then
   fi
 fi
 
+# Maestro is installed from Homebrew when available, otherwise from a pinned GitHub
+# release whose SHA-256 checksum is verified before anything is unpacked. Nothing is
+# ever piped into a shell.
+MAESTRO_TAG="cli-2.12.1"
+install_maestro() {
+  if command -v brew >/dev/null 2>&1; then
+    echo "  installing with Homebrew: brew install mobile-dev-inc/tap/maestro"
+    brew tap mobile-dev-inc/tap && brew install mobile-dev-inc/tap/maestro
+    return
+  fi
+  local base="https://github.com/mobile-dev-inc/maestro/releases/download/$MAESTRO_TAG"
+  local work
+  work="$(mktemp -d)" || return 1
+  echo "  downloading Maestro $MAESTRO_TAG from GitHub releases"
+  (
+    cd "$work" || exit 1
+    curl -fsSLO "$base/maestro.zip" && curl -fsSLO "$base/checksums_sha256.txt" || exit 1
+    if command -v sha256sum >/dev/null 2>&1; then
+      sha256sum -c checksums_sha256.txt || exit 1
+    else
+      shasum -a 256 -c checksums_sha256.txt || exit 1
+    fi
+    unzip -q maestro.zip && mkdir -p "$HOME/.maestro" && cp -R maestro/. "$HOME/.maestro/"
+  )
+  local rc=$?
+  rm -rf "$work"
+  return $rc
+}
+
 if [ "$SCOPE" != "web" ]; then
   step "Maestro CLI"
   if command -v maestro >/dev/null 2>&1; then
     ok "maestro $(maestro --version 2>/dev/null | head -1)"
   else
-    echo "  installing from https://get.maestro.mobile.dev"
-    curl -Ls "https://get.maestro.mobile.dev" | bash || { warn "Maestro install failed"; FAILED=1; }
+    install_maestro || { warn "Maestro install failed"; FAILED=1; }
     export PATH="$PATH:$HOME/.maestro/bin"
     if command -v maestro >/dev/null 2>&1; then
       ok "maestro installed"
@@ -60,7 +88,7 @@ if [ "$SCOPE" != "web" ]; then
   if command -v java >/dev/null 2>&1; then
     ok "java present"
   else
-    warn "Java 11+ not found — install Eclipse Temurin LTS from https://adoptium.net"
+    warn "Java 17+ not found — install Eclipse Temurin LTS from https://adoptium.net"
   fi
 
   step "Maestro MCP server"

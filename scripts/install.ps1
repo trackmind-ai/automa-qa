@@ -59,7 +59,7 @@ if ($Scope -ne 'web') {
         Write-Ok "java present"
     }
     else {
-        Write-Warn "Java 11+ not found - install Eclipse Temurin LTS from https://adoptium.net and tick 'Set JAVA_HOME'"
+        Write-Warn "Java 17+ not found - install Eclipse Temurin LTS from https://adoptium.net and tick 'Set JAVA_HOME'"
     }
 
     Write-Step "Maestro MCP server"

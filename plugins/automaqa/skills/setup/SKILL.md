@@ -389,10 +389,36 @@ maestro --version
 If installed, continue. If not installed:
 
 ### macOS / Linux
+
+Never pipe a download into a shell. Pick the first option that applies and tell the
+developer the exact commands before running them.
+
+**Option 1 — Homebrew (preferred when `brew` exists).** Homebrew verifies the pinned
+release checksum itself:
 ```bash
-curl -Ls "https://get.maestro.mobile.dev" | bash
+brew tap mobile-dev-inc/tap
+brew install mobile-dev-inc/tap/maestro
+```
+(If your Homebrew asks for it, run `brew trust --formula mobile-dev-inc/tap/maestro` first,
+as Maestro's own install guide says.)
+
+**Option 2 — pinned release download with a checksum check.** The version is pinned here
+(`cli-2.12.1`); the files come from Maestro's GitHub release, are saved to disk and checked
+before anything is unpacked:
+```bash
+MAESTRO_TAG="cli-2.12.1"
+WORK="$(mktemp -d)" && cd "$WORK" || exit 1
+curl -fsSLO "https://github.com/mobile-dev-inc/maestro/releases/download/$MAESTRO_TAG/maestro.zip"
+curl -fsSLO "https://github.com/mobile-dev-inc/maestro/releases/download/$MAESTRO_TAG/checksums_sha256.txt"
+sha256sum -c checksums_sha256.txt 2>/dev/null || shasum -a 256 -c checksums_sha256.txt
+```
+Only if the checksum line says `OK`:
+```bash
+unzip -q maestro.zip
+mkdir -p "$HOME/.maestro" && cp -R maestro/. "$HOME/.maestro/"
 export PATH="$PATH:$HOME/.maestro/bin"
 ```
+If the checksum check fails, stop and tell the developer. Do not unpack the file.
 
 Add the `export PATH` line to `~/.zshrc` or `~/.bashrc` to make it permanent, then `source` the file.
 
@@ -421,7 +447,7 @@ maestro --version
    maestro --version
    ```
 
-**Java required on Windows:** Maestro needs Java 11+.
+**Java required:** Maestro needs Java 17 or newer.
 ```powershell
 java -version
 ```
@@ -538,12 +564,12 @@ Once Chrome is closed (or was never running), launch it into an isolated profile
 
 **Windows:**
 ```powershell
-& "$chrome" --remote-debugging-port=9222 --user-data-dir="$PWD\.automaqa\chrome-debug-profile" --no-first-run --no-default-browser-check about:blank
+& "$chrome" --remote-debugging-port=9222 --user-data-dir="$((Get-Location).Path)\.automaqa\chrome-debug-profile" --no-first-run --no-default-browser-check about:blank
 ```
 
 **Mac/Linux:**
 ```bash
-"$CHROME" --remote-debugging-port=9222 --user-data-dir="$PWD/.automaqa/chrome-debug-profile" --no-first-run --no-default-browser-check about:blank &
+"$CHROME" --remote-debugging-port=9222 --user-data-dir="$(pwd)/.automaqa/chrome-debug-profile" --no-first-run --no-default-browser-check about:blank &
 ```
 
 Then re-verify:

@@ -6,7 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-11-06
+
+Fixes for the plugin directory's automatic review.
+
 ### Changed
+- Maestro is no longer installed by piping a download into a shell. `/automaqa:setup`, the plugin README, `docs/setup.md` and `scripts/install.sh` use Homebrew (`brew install mobile-dev-inc/tap/maestro`) or, without Homebrew, a pinned GitHub release (`cli-2.12.1`) whose SHA-256 checksum is verified before it is unpacked. Windows still uses Scoop.
+- Corrected the Java requirement for Maestro from 11+ to 17+ everywhere it was stated.
+- Chrome debug-profile launch commands use `pwd` / `Get-Location` instead of the `PWD` environment variable.
+- Removed the unsupported `_comment` key from `hooks/hooks.json`; the same explanation lives in the header of `scripts/hooks/hook.sh`.
 - Plugin README: added three example prompts and a short troubleshooting section.
 - Install steps in the README, `docs/setup.md`, `SAMPLE.md` and the plugin README now use the shared Trackmind marketplace (`/plugin marketplace add trackmind-ai/marketplace`, then `/plugin install automaqa@trackmind`), the same route as the other Trackmind plugins.
 - The in-repo dev marketplace is renamed `trackmind-automaqa-dev` (was `trackmind-automaqa`) and marked local-development-only, so it cannot be confused with the published catalog. Contributors who added the old name should re-add it; `CONTRIBUTING.md` has the new name.
