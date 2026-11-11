@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-11-11
+
+### Changed
+- `/automaqa:setup` no longer downloads Maestro itself. On macOS and Linux it uses Homebrew, and without Homebrew it asks the developer to follow Maestro's official install guide and confirm. This removes the last download-and-run pattern the directory review flagged. The plugin README and `docs/setup.md` match.
+- The Playwright skill's example now targets `http://localhost:3000` instead of a made-up remote host, and runs `maestro` with `execFileSync` and an argument list instead of building a shell command string that contains the test credentials.
+
 ## [0.1.3] — 2026-11-06
 
 ### Removed

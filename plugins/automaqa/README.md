@@ -42,10 +42,10 @@ which you approve through Claude's normal permission prompts):
 - `npm install` of `@playwright/test`, `typescript`, `ts-node`, `@types/node` and `xlsx` in *your*
   project, and `npx playwright install chromium` (downloads a Chromium build).
 - Web scope only needs Node.js. Mobile scope also needs Java 17+ and the Maestro CLI.
-  On macOS and Linux it is installed with Homebrew (`brew install mobile-dev-inc/tap/maestro`)
-  or, without Homebrew, from a pinned Maestro GitHub release (`cli-2.12.1`) whose SHA-256
-  checksum is verified before unpacking. On Windows it uses `scoop install maestro`. The
-  plugin never pipes a download into a shell.
+  On macOS and Linux it is installed with Homebrew (`brew install mobile-dev-inc/tap/maestro`);
+  without Homebrew the setup skill asks you to follow Maestro's official install guide and
+  tell it when you are done. On Windows it uses `scoop install maestro`. The plugin never
+  downloads or runs an installer itself.
 - Registers MCP servers with Claude Code: `claude mcp add --scope user maestro maestro mcp`
   (user scope, so it applies to all your projects), and installs the Chrome DevTools MCP
   plugin (`claude plugin install chrome-devtools-mcp`). Both load after you restart Claude Code. Skip mobile or web scope to skip the
