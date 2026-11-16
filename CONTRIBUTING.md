@@ -61,9 +61,12 @@ Each skill is a single `SKILL.md` with YAML frontmatter:
 ---
 description: One sentence on what the skill does.
 when_to_use: Concrete trigger phrases the model should match on.
-argument-hint: [optional | args]
+argument-hint: "[optional | args]"
 ---
 ```
+
+Always wrap `argument-hint` in double quotes. An unquoted `[...]` is read as a YAML list, and the
+plugin directory's check rejects it as "File not plain". `scripts/validate.sh` fails on it.
 
 Keep `when_to_use` specific — it is how the model decides to invoke the skill. Vague
 descriptions cause both missed and spurious invocations.

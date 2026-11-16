@@ -2,7 +2,7 @@
 name: language-check
 description: Read the text of a live website or mobile app, strictly read-only, and report wording, spelling, grammar and coherence problems - typos, vague or inconsistent labels, mixed terminology, placeholder or debug text left on screen, and wording that disagrees between screens. Every mistake gets a screenshot with the wrong text highlighted, and the final report gives the correct text for each one. Runs locally; the app is never changed and nothing is sent to an external grammar service. Always asks which platform first.
 when_to_use: Use when the user says "check the app wording", "check the grammar of the app", "proofread the website", "check the UI text", "spell check the app", "is the copy consistent", "language check", or wants copy reviewed before a release.
-argument-hint: [web|mobile] [url | app id] [screens to check]
+argument-hint: "[web|mobile] [url | app id] [screens to check]"
 ---
 
 # language-check

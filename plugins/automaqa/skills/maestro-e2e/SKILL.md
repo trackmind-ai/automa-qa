@@ -1,7 +1,7 @@
 ---
 description: Universal autonomous workflow for writing and verifying E2E Maestro mobile tests using screen inspection. Works standalone for mobile-only testing or is invoked by automaqa:playwright-e2e for cross-platform parity.
 when_to_use: Use when the user wants to run mobile E2E tests, write Maestro YAML flows, test a mobile feature, verify mobile behavior from a spec, or do mobile-only testing without Playwright. Trigger on "run mobile tests", "test mobile", "write maestro flows", "maestro e2e", "test on device", "mobile testing", "run on emulator", or when the user mentions testing on Android or iOS.
-argument-hint: [feature-name or spec-path]
+argument-hint: "[feature-name or spec-path]"
 ---
 
 # Maestro E2E Workflow

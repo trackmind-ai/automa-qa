@@ -1,7 +1,7 @@
 ---
 description: Universal autonomous workflow for writing and verifying E2E Playwright tests using visual discovery. Master orchestrator for web and mobile testing.
 when_to_use: Use when the user wants to run E2E tests, write Playwright tests, test a web feature, verify a spec against a live app, or start the full testing workflow. Trigger on phrases like "run tests", "write playwright tests", "test this feature", "start e2e", "run the spec".
-argument-hint: [spec-path or feature-name]
+argument-hint: "[spec-path or feature-name]"
 ---
 
 # Universal Playwright E2E Workflow — Master Orchestrator

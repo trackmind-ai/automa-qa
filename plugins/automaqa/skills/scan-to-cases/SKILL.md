@@ -2,7 +2,7 @@
 name: scan-to-cases
 description: Generate test cases from an automaqa:scan reference document (.toon or source.json), write them to an Excel review workbook, and after the user approves it send it to /automaqa:import-cases. Every case traces to a scan ID (AC-, D-, T-, E-, F-, Q-).
 when_to_use: Use after a scan, when the user says "generate test cases from the scan", "write test cases from the .toon", "scan to cases", or "what can we test" and a scan output exists.
-argument-hint: [path/to/<Name>_v<version>.toon | path/to/source.json]
+argument-hint: "[path/to/<Name>_v<version>.toon | path/to/source.json]"
 ---
 
 # scan-to-cases

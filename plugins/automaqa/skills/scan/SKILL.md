@@ -2,7 +2,7 @@
 name: scan
 description: Read a live website or mobile app, strictly read-only, and write a standing reference document that test cases can be written from — built from one structured source and rendered as PDF, Word and TOON (identical IDs and content). Fixed structure with stable IDs (AC-P, D-, T-, E-, F-, Q-), a cross-screen consistency pass, tooltip and expandable-field registers, forms opened read-only, a multi-role pass, and a quality check that fails the build. Modes - scan (new), update <previous .toon> (versioned, rescans named areas only), resume (continue unreached areas). Always asks which platform first.
 when_to_use: Use when the user wants to scan, read, crawl, map, understand or document an app or website, produce a business workflow / reference document, write test cases from an app, refresh the reference after a release (update), or continue a scan that stopped early (resume). Trigger on "scan", "scan the app", "read the website", "document the workflow", "business workflow", "reference document", "update the scan", "update <file>.toon", "resume the scan", "what can we test".
-argument-hint: [web | mobile] [url or appId] | update <previous .toon> | resume
+argument-hint: "[web | mobile] [url or appId] | update <previous .toon> | resume"
 ---
 
 # App Scan

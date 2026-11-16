@@ -37,6 +37,8 @@ for d in plugins/automaqa/skills/*/; do
   head -1 "$f" | grep -q '^---$' || { fail "$name: frontmatter must start on line 1"; continue; }
   grep -q '^description:' "$f" || { fail "$name: missing description"; continue; }
   grep -q '^when_to_use:' "$f" || { fail "$name: missing when_to_use"; continue; }
+  # An unquoted [...] value is a YAML list; the directory's check flags it as "File not plain".
+  if sed -n '2,/^---/p' "$f" | grep -E '^argument-hint:' | grep -qvE '^argument-hint: *"'; then fail "$name: argument-hint must be wrapped in double quotes"; continue; fi
   pass "$name"
 done
 
