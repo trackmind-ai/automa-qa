@@ -151,7 +151,7 @@ mkdir -p tests/e2e tests/support specs pages/components pages/support screens ma
 |---|---|
 | `tests/e2e/` | Playwright spec files — behaviour only, never locators |
 | `tests/` | Also holds `versioned-reporter.ts` (copied in Step 5) |
-| `tests/support/` | `flake-store.ts` and `quarantine.ts` — test-health tracking (Step 5d) |
+| `tests/support/` | `flake-store.ts` and `quarantine.ts` (test-health tracking, Step 5d); `evidence.ts` and `report-render.js` (report evidence, Step 5e) |
 | `specs/` | Feature spec.md files and HTML reports go here |
 | `pages/` | Web page objects — the ONLY place web locators live |
 | `pages/components/` | Reusable widget objects (nav, tables, modals) |
@@ -160,7 +160,7 @@ mkdir -p tests/e2e tests/support specs pages/components pages/support screens ma
 | `maestro/flows/` | Maestro YAML flow files that compose screens |
 | `maestro/subflows/` | Reusable Maestro sub-flows |
 
-> `test-results/` is **NOT created** — it is not needed. The versioned-reporter writes directly to `specs/<slug>/report-v{N}.html` using in-memory data, with no intermediate JSON file.
+> `test-results/` is Playwright's own scratch folder and is wiped each run. The versioned-reporter copies every screenshot it needs into `specs/<slug>/evidence/v{N}/shots/`, so reports survive it.
 
 ---
 
@@ -192,7 +192,15 @@ Copy-Item "${CLAUDE_PLUGIN_ROOT}\templates\tests\versioned-reporter.ts" -Destina
 cp "${CLAUDE_PLUGIN_ROOT}/templates/tests/versioned-reporter.ts" tests/versioned-reporter.ts
 ```
 
-If it **already exists**, no action needed — continue.
+If it **already exists**, check whether it is the current version — older copies only write a plain results table, with no screenshots:
+
+```bash
+grep -q "report-render" tests/versioned-reporter.ts && echo CURRENT || echo OUTDATED
+```
+(PowerShell: `Select-String -Path tests\versioned-reporter.ts -Pattern report-render -Quiet`)
+
+- **CURRENT** → no action, continue.
+- **OUTDATED** → copy the plugin version over it and tell the user: *"Upgraded `tests/versioned-reporter.ts` — reports now include step-by-step screenshots with highlights."* Keep the old file as `tests/versioned-reporter.ts.bak` first, in case the user customised it.
 
 ### 5c — Copy `healing-locator.ts` into the user's project
 
@@ -253,14 +261,35 @@ done
 Tell the user to add `.automaqa/history.json` to version control if tests run in CI —
 without shared history every CI run starts blind, and no inter-run flake is ever detected.
 
+### 5e — Copy the report evidence helpers
+
+The final report (screenshots with highlights, step-by-step explanation) needs two files in `tests/support/`. Always refresh `report-render.js` — it is plugin-owned and has no user edits; copy `evidence.ts` only if missing.
+
+**Windows:**
+```powershell
+Copy-Item "${CLAUDE_PLUGIN_ROOT}\scripts\report\render.js" -Destination "tests\support\report-render.js" -Force
+if (-not (Test-Path tests\support\evidence.ts)) {
+  Copy-Item "${CLAUDE_PLUGIN_ROOT}\templates\tests\support\evidence.ts" -Destination "tests\support\evidence.ts"
+}
+```
+**Mac/Linux:**
+```bash
+cp "${CLAUDE_PLUGIN_ROOT}/scripts/report/render.js" tests/support/report-render.js
+[ -f tests/support/evidence.ts ] ||   cp "${CLAUDE_PLUGIN_ROOT}/templates/tests/support/evidence.ts" tests/support/evidence.ts
+```
+
+> **What these do:** `evidence.ts` exports `snap()` and `check()`, which test files call to record a
+> screenshot with the relevant element highlighted plus a plain-English description of the step.
+> `report-render.js` turns the collected evidence into one self-contained HTML file. Nothing is
+> injected into the page under test. See `automaqa:test-report`.
+
 > **What versioned-reporter.ts does:**
 > A custom Reporter class registered in `playwright.config.ts`. Playwright calls its methods in this order:
 > 1. `onBegin()` — records the run start time
-> 2. `onTestEnd()` — collects each test result (title, status, duration, error) in memory
-> 3. `onEnd()` — writes `specs/<slug>/report-v{N}.html` from the collected data
+> 2. `onTestEnd()` — collects each test result (title, status, duration, error) and its evidence steps in memory
+> 3. `onEnd()` — writes `specs/<slug>/evidence/v{N}/web.manifest.json` (+ screenshots) and renders `specs/<slug>/report-v{N}.html` from it
 >
-> Reports are written entirely from in-memory data — no intermediate JSON file, no timing dependency.
-> N auto-increments by counting existing `report-v*.html` files in `specs/<slug>/`.
+> No timing dependency on other reporters. N is one past the highest existing `report-v*.html` / `evidence/v*` in `specs/<slug>/`.
 
 ### 5b — Verify or Create `playwright.config.ts`
 
@@ -613,6 +642,8 @@ tests/versioned-reporter [OK]         copied from plugin
 pages/support/healing     [OK]         copied from plugin
 tests/support/flake-store [OK]         copied from plugin
 tests/support/quarantine  [OK]         copied from plugin
+tests/support/evidence    [OK]         copied from plugin (screenshots + highlights)
+tests/support/report-render [OK]       refreshed from plugin
 @types/node               [OK]         needed by reporter + healing helper
 Directory structure      [OK]         tests/e2e, specs, maestro/flows
 Maestro CLI              [OK/SKIP/FAIL]
@@ -627,10 +658,18 @@ Chrome remote debugging  [OK/WARN]    localhost:9222 responding
 Status: READY  (or list of items needing attention)
 
 Next steps:
-  Import cases     →  /automaqa:import-cases  (xlsx, csv, json, md, feature, yaml, xml, txt)
-  Test health      →  /automaqa:flake-guard   (once a few runs have accumulated)
+  Scan an app      →  /automaqa:scan           (read a live website or mobile app, read-only,
+                                                and produce a reference doc: PDF, Word, TOON)
+  Scan → cases     →  /automaqa:scan-to-cases  (generate test cases from a scan into an Excel
+                                                review workbook, then hand off to import-cases)
+  Import cases     →  /automaqa:import-cases   (xlsx, csv, json, md, feature, yaml, xml, txt)
+  API testing      →  /automaqa:api-collection-test  (run a Postman collection, check status
+                                                codes and payloads, get a pass/fail HTML report)
   Web testing      →  /automaqa:playwright-e2e
   Mobile testing   →  /automaqa:maestro-e2e
+  Test health      →  /automaqa:flake-guard    (once a few runs have accumulated)
+
+Typical flow: scan → scan-to-cases → import-cases → playwright-e2e / maestro-e2e
 ```
 
 For any WARN or FAIL, print a one-line fix directly below the table.

@@ -364,7 +364,21 @@ N is auto-incremented by counting existing `report-v*.html` files in the feature
 
 `report.html` (no version suffix) is the **manual** live-verification report — written by Step 6 of `playwright-e2e`, never overwritten by automation.
 
-**The test team writes only test logic. Reports are generated automatically and invisibly.**
+**The report is generated automatically — but what it can show depends on the evidence each test records.**
+Every test gets `purpose` / `expected` / `spec` annotations and calls `snap()` after each meaningful
+input or action and `check()` for the assertion that proves the result, passing the relevant element(s)
+as `marks` (they are highlighted on the screenshot; red on failure). Pattern and rules:
+`automaqa:test-report`; helper: `tests/support/evidence.ts`.
+
+```ts
+import { snap, check } from './support/evidence';
+await snap(page, testInfo, { action: 'Typed a wrong password',
+  marks: [{ locator: page.getByLabel('Password'), label: 'Password field' }] });
+await check(page, testInfo, { action: 'Submitted the form', expected: 'An error message appears',
+  marks: [{ locator: page.getByText('Wrong email or password.'), label: 'Error message' }],
+  assert: () => expect(page.getByText('Wrong email or password.')).toBeVisible() });
+```
+Tests take `{ page }, testInfo` (Pattern A) — in Pattern B take `testInfo` as the test's argument: `test('…', async ({}, testInfo) => …)`.
 
 ---
 

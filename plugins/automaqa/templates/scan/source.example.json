@@ -1,0 +1,81 @@
+{
+  "meta": {
+    "title": "Demo Portal - Business Workflow",
+    "subtitle": "Read-only reference for QA test scripts (QA environment)",
+    "application": "Demo Portal (the staff side of the Demo app)",
+    "environment": "https://demo.example.test (QA)",
+    "observed_on": "4 November 2026, signed in as a QA admin. Observation only - nothing was saved, sent or deleted.",
+    "version": "1.0",
+    "date": "2026-11-04",
+    "version_note": "1.0 - first version from a read-only walk-through.",
+    "sheet_prefix": "Demo",
+    "screenshots": false
+  },
+  "purpose": "The Demo Portal helps staff look after orders and customers. A user sees the day's orders, opens a customer record and reviews alerts.",
+  "exec_summary": ["Staff use the portal to triage orders each day and to check customers.", "An admin also manages the users who can sign in."],
+  "roles": [
+    { "role": "Staff", "sees": "Menu: Orders, Customers", "does": "Review orders and customers" },
+    { "role": "Admin", "sees": "Same as Staff plus Admin", "does": "Everything Staff can do, plus user management" }
+  ],
+  "glossary": [{ "term": "Order", "meaning": "A request from a customer, shown with a status" }],
+  "menu": [
+    { "item": "Orders", "address": "/orders", "purpose": "List of orders with filters" },
+    { "item": "Customers", "address": "/customers", "purpose": "List of customers" }
+  ],
+  "global_elements": [
+    { "key": "g:search", "element": "Search Customers (top left)", "shows": "Search box for customers", "must": "Typing finds customers; selecting one opens that customer" }
+  ],
+  "forms": [
+    { "key": "f:new-order", "where": "Orders > New Order", "title": "New Order", "safe": "Y / N",
+      "fields": [ { "label": "Customer Name", "type": "text", "required": true, "hint": "Start typing" }, { "label": "Quantity", "type": "number", "required": true, "hint": "" } ],
+      "buttons": ["Cancel", "Save Order"] }
+  ],
+  "tooltips": [
+    { "key": "t:orders-total", "where": "Orders > header", "icon": "Total orders", "text": "Total number of orders in the selected period across all customers." }
+  ],
+  "expandables": [
+    { "key": "e:order-row", "where": "Orders > list row", "control": "Show details", "reveals": "The order lines, one per line, with quantity." }
+  ],
+  "screens": [
+    { "key": "orders", "title": "Orders", "where": "Main menu > Orders", "address": "/orders",
+      "purpose": "The list of orders with a status filter and paging.",
+      "text": ["Orders", "Showing 25 of 60 orders", "Status", "New Order"],
+      "elements": [
+        { "element": "Showing 25 of N orders", "shows": "Page size and total", "must": "25 per page; the total equals the sum over all pages", "number_kind": "rule" },
+        { "element": "Status filter", "shows": "Open, Closed", "must": "Only orders with the chosen status are listed" }
+      ],
+      "notes": [] },
+    { "key": "customers", "title": "Customers", "where": "Main menu > Customers", "address": "/customers",
+      "purpose": "The list of customers.",
+      "text": ["Customers", "Showing 10 of 12 customers"],
+      "elements": [ { "element": "Showing 10 of N customers", "shows": "Page size and total", "must": "10 per page", "number_kind": "rule" } ] }
+  ],
+  "criteria": [
+    { "key": "ac:orders-paging", "screen": "orders", "text": "The Orders list shows 25 per page and the total in 'Showing 25 of N orders' equals the sum over all pages.", "number_kind": "rule" },
+    { "key": "ac:orders-filter", "screen": "orders", "text": "The status filter lists only orders with the chosen status, and Cancel leaves the list unchanged." },
+    { "key": "ac:customers-paging", "screen": "customers", "text": "The Customers list shows 10 per page.", "number_kind": "rule" },
+    { "key": "ac:readonly", "screen": "global", "text": "A read-only run sends no write request and clicks none of the data-changing controls." }
+  ],
+  "data_rules": [
+    { "key": "d:orders-total", "rule": "The total orders in the Orders header bubble equals the total in 'Showing 25 of N orders' (seen on 2026-11-04: 60).", "where": "Orders: header; list", "seen": "2026-11-04", "status": "proposed" }
+  ],
+  "workflows": [
+    { "title": "Triage orders", "who": "Staff", "goal": "Know which orders need attention.", "steps": [ { "text": "Open Orders and read the list." }, { "text": "Create an order with New Order.", "not_executed": true } ] }
+  ],
+  "permissions": [ { "role": "Staff", "sees": "Orders, Customers", "can": "Open both lists", "cannot": "Not observed", "evidence": "Scanned signed in as Staff on 2026-11-04; read-only." } ],
+  "safe_to_test": [
+    { "page": "Orders", "control": "Status filter", "safe": "Y", "effect": "Changes the view only", "run_mode": "read_only_ok" },
+    { "page": "Orders", "control": "New Order; Save Order", "safe": "Y / N", "effect": "Opening is Y; saving creates an order", "run_mode": "open_ok_save_needs_approval" }
+  ],
+  "open_questions": [
+    { "key": "q:orders-count-label", "seen": "The Orders page says 'Showing 25 of 60 orders' while the header bubble counts 58 (seen on 2026-11-04).", "question": "Which count is right, and should both use the same period?", "status": "open" }
+  ],
+  "out_of_scope": ["The checkout flow and email delivery."],
+  "person_judgement": ["Whether the order statuses are clear to staff."],
+  "load_times": [ { "screen": "orders", "action": "open screen", "secs": 6.2, "ok": true } ],
+  "coverage": { "summary": ["2 screens read."], "not_reached": ["Admin screen: queued, budget used"], "limits": ["One account only."] },
+  "facts": [
+    { "key": "order", "screen": "orders", "label": "orders", "value": 60, "seen": "2026-11-04" }
+  ],
+  "change_log": [ { "version": "1.0", "date": "2026-11-04", "sections": "All", "what": "First version from a read-only walk-through.", "approved_by": "Pending Business sign-off" } ]
+}

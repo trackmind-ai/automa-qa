@@ -20,6 +20,7 @@ This is the entry point for **web** and **web + mobile** E2E testing. Follow eve
 | `automaqa:flake-guard` | Step 9 — when a test passes only on retry, or fails intermittently |
 | `automaqa:maestro-e2e` | Step 5 — for mobile-scoped steps (web + mobile mode only) |
 | `automaqa:maestro-skill` | Invoked automatically inside maestro-e2e during YAML authoring |
+| `automaqa:test-report` | Step 7 (live-verification evidence) and **Step 12 (mandatory final report)** |
 | `automaqa:setup` | Before Step 3 — if `playwright.config.ts`, `tests/versioned-reporter.ts`, or `tests/e2e/` do not exist in the user's project |
 | `automaqa:import-cases` | Before this skill, if spec.md does not yet exist |
 
@@ -94,13 +95,14 @@ Before doing anything in the browser, verify the user's project is correctly set
 Check for these three things in the user's cwd:
 
 1. **`playwright.config.ts`** — must exist and must register `./tests/versioned-reporter.ts` as a reporter (NOT globalTeardown, NOT json reporter)
-2. **`tests/versioned-reporter.ts`** — must exist (copied from plugin by setup)
+2. **`tests/versioned-reporter.ts`** — must exist and be the current version (contains `report-render`; copied from plugin by setup)
 3. **`tests/e2e/`** — must exist (created by setup)
+4. **`tests/support/evidence.ts`** and **`tests/support/report-render.js`** — must exist (copied by setup; the reporter cannot render screenshots without them)
 
-If any of these are missing: **stop and tell the user:**
+If any of these are missing or outdated: **stop and tell the user:**
 > "Your project environment is not set up yet. Run `/automaqa:setup` first — it will create the required directories, copy the versioned reporter, and configure `playwright.config.ts` correctly. Then come back and re-run this skill."
 
-If all three exist: continue to Step 4.
+If all exist: continue to Step 4.
 
 ---
 
@@ -153,13 +155,11 @@ For each step/screen in the flow, complete live verification before writing a si
 
 After live verification, before writing any Playwright code:
 
-1. Create or update `specs/<feature-slug>/report.html` — this is the **manual verification report** (no version suffix).
-2. Document every scenario executed in Step 6:
-   - Scenario ID, description, input used, expected (from spec), actual, status (PASS/FAIL/BUG)
-   - For BUG: severity (Critical/Major/Minor), exact repro steps, screenshot path
-3. Bugs from live verification go in a **Bugs Found** section at the top of the report (red, prominent).
+1. Invoke **`automaqa:test-report`** and record every scenario executed in Step 6 in `specs/<feature-slug>/evidence/live/live.manifest.json` — one case per scenario, each step with a **viewport screenshot and the relevant element highlighted** (blue = acted on, green = correct result, red = deviation).
+2. For each scenario: ID, description, input used, expected (from spec), actual, status (passed/failed). For a deviation: a `bugs` entry with severity (Critical/Major/Minor), exact repro steps and the annotated screenshot.
+3. Render it: `node "${CLAUDE_PLUGIN_ROOT}/scripts/report/build_report.js" specs/<feature-slug> --run live --out specs/<feature-slug>/report.html`. Bugs appear in a **Bugs found** section at the top (red, prominent).
 
-> **Note:** The automated Playwright run produces a separate `report-v{N}.html` after each run. This is written by `tests/versioned-reporter.ts` — a custom Reporter class that collects results in `onTestEnd()` and writes the HTML in `onEnd()`. It is registered in `playwright.config.ts` and runs automatically. `report.html` (no version) is the manual live-verification record and is never overwritten.
+> **Note:** The automated Playwright run produces a separate `report-v{N}.html` after each run, and **folds this live evidence into it**. This is written by `tests/versioned-reporter.ts` — a custom Reporter class that collects results in `onTestEnd()` and writes the HTML in `onEnd()`. It is registered in `playwright.config.ts` and runs automatically. `report.html` (no version) is the manual live-verification record and is never overwritten.
 
 ---
 
@@ -352,6 +352,7 @@ This is wrong. Use `test.describe()` + `beforeEach` instead — a failure in TC_
    ```
 
 5. Codify all ~20 spec-derived scenarios as individual `test()` calls — positive cases first, then negative/edge cases.
+   **Every test records evidence** (`import { snap, check } from './support/evidence'`): give each `test()` `purpose` / `expected` / `spec` annotations, take a `snap()` after each meaningful input or action and use `check()` for the assertion that proves the result — with the relevant element as a mark. The report is built from this; a test with no evidence shows only Playwright's end-of-test screenshot. See `automaqa:test-report` for the pattern.
 6. Every scenario verified manually in Step 6 must have a corresponding automated test.
 7. For mobile-scoped steps (TEST_MODE = both): embed Maestro execution inside a `test.step()` using credentials from Step 1 as inline `-e` flags.
 
@@ -427,7 +428,7 @@ Once the current step is fully automated:
 
 ---
 
-## Step 11: Final Report and Summary
+## Step 11: Final Run
 
 1. Run the full test suite end-to-end:
    ```bash
@@ -436,21 +437,25 @@ Once the current step is fully automated:
    npx playwright test tests/e2e/<feature-slug>.spec.ts --headed
    ```
 
-2. After the run completes, `tests/versioned-reporter.ts` (registered in `playwright.config.ts`) automatically writes:
-   `specs/<feature-slug>/report-v{N}.html`
+2. After the run completes, `tests/versioned-reporter.ts` (registered in `playwright.config.ts`) automatically writes, inside its `onEnd()` callback:
+   - `specs/<feature-slug>/report-v{N}.html` — the report (first draft)
+   - `specs/<feature-slug>/evidence/v{N}/web.manifest.json` and `shots/*.png` — the data and original screenshots
 
-   Generation happens inside the reporter's `onEnd()` callback — at this point all test
-   data is collected in memory. N is auto-incremented by counting existing `report-v*.html` files.
+   N is one past the highest existing `report-v*.html` / `evidence/v*`.
 
-   The versioned HTML report contains:
-   - Summary cards: total / passed / failed / skipped / total duration
-   - Failure banner (red, prominent) if any tests failed
-   - Table: one row per test — title, PASS/FAIL/SKIP badge, duration
-   - Inline error detail row beneath every FAIL (first 400 chars of error message)
+3. The live-verification report (`specs/<feature-slug>/report.html`, no version suffix) is never overwritten by automation; its findings are also folded into `report-v{N}.html`.
 
-3. The live-verification HTML report (`specs/<feature-slug>/report.html`, no version suffix) remains untouched and documents manual browser verification separately.
+---
 
-4. Provide the report path and a structured summary in your final response.
+## Step 12: Final Report (MANDATORY — the run is not done until this passes)
+
+Invoke **`automaqa:test-report`** and complete its steps:
+
+1. **Enrichment** — add the plain-language `summary`, fill each case's `purpose` / `verdict`, and create `bugs` entries (severity, impact, repro steps, annotated screenshot) in `evidence/v{N}/*.manifest.json`. Never change a status.
+2. **Merge mobile** (`TEST_MODE = both`) — add `mobile.manifest.json` from the `automaqa:maestro-e2e` results to the same `evidence/v{N}/` folder.
+3. **Build** — `node "${CLAUDE_PLUGIN_ROOT}/scripts/report/build_report.js" specs/<feature-slug> --run v{N}` (add `--pdf` if the user wants a PDF).
+4. **Verify** — totals match the Playwright summary, every failure is explained, highlights sit on the right elements.
+5. **Tell the user** the report path, the totals, and the top findings in two or three lines.
 
 ---
 
@@ -463,6 +468,8 @@ Once the current step is fully automated:
 5. **NO HAPPY-PATH ONLY**: Every step is tested for how it breaks.
 6. **NO PLACEHOLDERS**: Final scripts must be complete and runnable.
 7. **NO SILENT FAILURES**: Every bug must appear in the report.
+7a. **NO RUN WITHOUT A REPORT**: Step 12 is not optional. Never finish a run by pointing at terminal output — the user gets the report file, with screenshots and highlights.
+7b. **NO EVIDENCE-FREE TESTS**: Every automated test records at least one `snap()`/`check()` step with the relevant element highlighted.
 8. **HEADED BY DEFAULT**: Always run with `--headed --trace on` during development.
 9. **NO SERIAL FOR INDEPENDENT TESTS**: Never use `test.describe.serial()` when tests do not depend on each other's state. Independent tests MUST use `test.describe()` + `beforeEach` so a failure in one never skips others.
 10. **NO GLOBALTEARDOWN FOR REPORTS**: Never use `globalTeardown` to read `results.json` — it runs before reporters flush. Use `versioned-reporter.ts` (a custom Reporter registered in `playwright.config.ts`) instead.
@@ -473,4 +480,5 @@ Once the current step is fully automated:
 - Playwright coding standards: [`automaqa:playwright-skill`]
 - Mobile testing: [`automaqa:maestro-e2e`]
 - Spec generation: [`automaqa:import-cases`]
+- Final report and evidence: [`automaqa:test-report`]
 - Environment setup: [`automaqa:setup`]
