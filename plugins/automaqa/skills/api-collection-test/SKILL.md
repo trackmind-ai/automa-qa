@@ -2,7 +2,7 @@
 name: api-collection-test
 description: Test a REST API from a Postman collection — find every required input (host, auth tokens, IDs, mandatory params, values that depend on earlier responses), ask the user only for what is missing, then run each request safely, check status codes and response payloads, and produce a pass/fail HTML report with categorised issues.
 when_to_use: Use when the user provides a Postman collection (.json), or asks to test, smoke-test, validate or regression-check an API/backend from a collection. Trigger on "postman collection", "api collection", "test the api", "validate the endpoints", "check response codes", "api test report", "run the collection", "api smoke test", or any path ending in .postman_collection.json.
-argument-hint: [path/to/collection.postman_collection.json]
+argument-hint: "[path/to/collection.postman_collection.json]"
 ---
 
 # API Collection Test

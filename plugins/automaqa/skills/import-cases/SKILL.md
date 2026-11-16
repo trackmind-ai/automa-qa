@@ -1,7 +1,7 @@
 ---
 description: Convert test cases from any format — Excel, CSV/TSV, JSON, Markdown, Gherkin, YAML, XML or plain text — into structured spec.md files following the 9-section spec format. Supports web (Playwright) and mobile (Maestro).
 when_to_use: Use when the user provides test cases in any file format and wants spec.md files generated. Trigger on "generate spec", "import test cases", "convert test cases", "excel to spec", "csv to spec", "build spec from", or any .xlsx/.csv/.json/.md/.feature/.yaml/.xml/.txt path mentioned alongside "spec" or "test cases".
-argument-hint: [path/to/TestCases.(xlsx|csv|json|md|feature|yaml|xml|txt)]
+argument-hint: "[path/to/TestCases.(xlsx|csv|json|md|feature|yaml|xml|txt)]"
 ---
 
 # Test-Case Import

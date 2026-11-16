@@ -2,7 +2,7 @@
 name: test-report
 description: Build the final test report — one self-contained HTML file (optional PDF) with a plain-language explanation of every test, step-by-step screenshots with the relevant elements highlighted, bugs with repro steps, and expected-vs-actual for each check. Invoked as the last step of playwright-e2e and maestro-e2e, and on demand.
 when_to_use: Use when a test run has finished and the user needs a report, when asked for "the report", "test report", "evidence", "screenshots with highlights", "explain the results", "a report I can share", or when a report must be regenerated or merged (web + mobile + live verification). Trigger on "generate report", "final report", "test report", "report with screenshots", "make the report easier to understand".
-argument-hint: [specs/<feature-slug>] [--pdf]
+argument-hint: "[specs/<feature-slug>] [--pdf]"
 ---
 
 # Test Report — evidence, explanation, highlights

@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- The `argument-hint` value in the frontmatter of all 9 skills that have one is now a double-quoted string. Unquoted `[...]` values were read as YAML lists, and the plugin directory's check flagged `scan` and `setup` as "File not plain". The hints display exactly as before.
+
 ## [0.1.5] — 2026-11-17
 
 ### Added

@@ -1,7 +1,7 @@
 ---
 description: Interactive full environment setup — installs and verifies Playwright, Maestro CLI, the Maestro and Chrome DevTools MCP plugins, Node deps, and browser drivers on Windows and macOS/Linux. Also prepares a dedicated Chrome remote-debugging profile for live web verification. Run this once on a new machine or whenever the environment needs repair.
 when_to_use: Use when the user wants to set up the testing environment, install Playwright, install Maestro, install or fix the Chrome DevTools MCP or Maestro MCP plugin, configure the project for the first time, or repair a broken setup. Trigger on "set up testing", "install playwright", "install maestro", "install chrome devtools mcp", "chrome devtools not connecting", "configure environment", "setup", "first time setup", "set up project".
-argument-hint: [web | mobile | both (default: both)]
+argument-hint: "[web | mobile | both (default: both)]"
 ---
 
 # Full Environment Setup
