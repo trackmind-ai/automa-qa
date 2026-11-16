@@ -39,7 +39,7 @@ listing every component and its state. Read that table — it is the authoritati
 
 | Component | Notes |
 |---|---|
-| Maestro CLI | `brew install mobile-dev-inc/tap/maestro` (macOS/Linux), or a pinned, checksum-verified release download; `scoop install maestro` on Windows. `/automaqa:setup` shows the exact commands. |
+| Maestro CLI | `brew install mobile-dev-inc/tap/maestro` (macOS/Linux), or Maestro's [official install guide](https://docs.maestro.dev/maestro-cli/how-to-install-maestro-cli); `scoop install maestro` on Windows. `/automaqa:setup` shows the exact commands. |
 | Java 17+ | Required by Maestro. [Eclipse Temurin](https://adoptium.net) LTS. On Windows, tick "Set JAVA_HOME". |
 | Maestro MCP | `claude mcp add --scope user maestro maestro mcp`. |
 | A booted device | An Android emulator, iOS simulator, or connected device. |

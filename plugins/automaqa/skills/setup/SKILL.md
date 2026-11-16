@@ -402,23 +402,14 @@ brew install mobile-dev-inc/tap/maestro
 (If your Homebrew asks for it, run `brew trust --formula mobile-dev-inc/tap/maestro` first,
 as Maestro's own install guide says.)
 
-**Option 2 — pinned release download with a checksum check.** The version is pinned here
-(`cli-2.12.1`); the files come from Maestro's GitHub release, are saved to disk and checked
-before anything is unpacked:
+**Option 2 — the developer installs it by hand.** Without Homebrew, do not download or run an
+installer yourself. Point the developer at Maestro's official install guide,
+https://docs.maestro.dev/maestro-cli/how-to-install-maestro-cli, ask them to follow the steps for
+their system and tell you when it is done, then continue with the check below. Their install puts
+`maestro` in `~/.maestro/bin` (or wherever the guide says); help them add that folder to `PATH`:
 ```bash
-MAESTRO_TAG="cli-2.12.1"
-WORK="$(mktemp -d)" && cd "$WORK" || exit 1
-curl -fsSLO "https://github.com/mobile-dev-inc/maestro/releases/download/$MAESTRO_TAG/maestro.zip"
-curl -fsSLO "https://github.com/mobile-dev-inc/maestro/releases/download/$MAESTRO_TAG/checksums_sha256.txt"
-sha256sum -c checksums_sha256.txt 2>/dev/null || shasum -a 256 -c checksums_sha256.txt
-```
-Only if the checksum line says `OK`:
-```bash
-unzip -q maestro.zip
-mkdir -p "$HOME/.maestro" && cp -R maestro/. "$HOME/.maestro/"
 export PATH="$PATH:$HOME/.maestro/bin"
 ```
-If the checksum check fails, stop and tell the developer. Do not unpack the file.
 
 Add the `export PATH` line to `~/.zshrc` or `~/.bashrc` to make it permanent, then `source` the file.
 

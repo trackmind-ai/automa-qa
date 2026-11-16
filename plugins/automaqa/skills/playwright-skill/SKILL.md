@@ -76,7 +76,7 @@ Examples: login validation, form validation, search, filters, modal dialogs.
 ```typescript
 import { test, expect } from '@playwright/test';
 
-const BASE_URL      = 'https://staging.app.com';
+const BASE_URL      = 'http://localhost:3000';
 const TEST_EMAIL    = 'tester@example.com';
 const TEST_PASSWORD = 'password123';
 
@@ -139,7 +139,7 @@ Examples: "create appointment → edit appointment → delete appointment", "onb
 ```typescript
 import { test, expect, Page } from '@playwright/test';
 
-const BASE_URL      = 'https://staging.app.com';
+const BASE_URL      = 'http://localhost:3000';
 const TEST_EMAIL    = 'tester@example.com';
 const TEST_PASSWORD = 'password123';
 
@@ -373,12 +373,14 @@ N is auto-incremented by counting existing `report-v*.html` files in the feature
 When spec describes mobile behavior, embed Maestro execution inside a Playwright `test.step()`:
 
 ```typescript
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 
 await test.step('Mobile Parity Verification (Maestro)', async () => {
   try {
-    const output = execSync(
-      `maestro test -e CLIENT_EMAIL="${TEST_EMAIL}" -e CLIENT_PASSWORD="${TEST_PASSWORD}" maestro/flow.yaml`,
+    // execFileSync passes arguments directly, with no shell to interpret them.
+    const output = execFileSync(
+      'maestro',
+      ['test', '-e', `CLIENT_EMAIL=${TEST_EMAIL}`, '-e', `CLIENT_PASSWORD=${TEST_PASSWORD}`, 'maestro/flow.yaml'],
       { encoding: 'utf-8', stdio: 'pipe' }
     );
     suiteResults.push({ step: 'Mobile Parity', outcome: 'Passed', details: output });
