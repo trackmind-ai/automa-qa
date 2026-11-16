@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.5] — 2026-11-17
+
+### Added
+- `scan` skill: reads a live web or mobile app, strictly read-only, and writes a reference document as PDF, Word and TOON with stable IDs (output in `specs/_scan/`). Supports update and resume modes.
+- `scan-to-cases` skill: turns a scan into test cases in an Excel review workbook and, after approval, hands it to `import-cases`.
+- `test-report` skill: builds one self-contained HTML report (optional PDF) with step-by-step screenshots, highlighted elements, bugs with repro steps and expected-versus-actual for each check.
+- `language-check` skill: proofreads the text of a live app, read-only, with a highlighted screenshot and a correction for each finding (output in `specs/_language/`). Nothing is sent to an external grammar service.
+- `api-collection-test` skill: runs a Postman collection, validates status codes and response bodies and writes an HTML report. Read-only by default; `--mode full` with `--confirm-host` allows writes.
+- Saved tokens and auth headers are only sent to confirmed hosts (a base URL the user supplied, or `--confirm-host`). Requests to any other host are skipped with `skipped: would send credentials to <host>`. Covered by `tests/api-host-pinning.test.js`.
+
+### Changed
+- `playwright-e2e`, `maestro-e2e`, `playwright-skill`, `setup` and the `test-orchestrator` agent know about the new skills and hand evidence to `test-report`.
+- The versioned reporter template records per-step evidence (screenshots and highlighted elements) for the report.
+- The plugin README's disclosure section lists what the new skills read, send and write, including that `store-secret.js` saves tokens in plain text to the git-ignored `.automaqa/api/inputs.json`.
+
 ## [0.1.4] — 2026-11-11
 
 ### Changed

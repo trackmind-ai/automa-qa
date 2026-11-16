@@ -1,13 +1,21 @@
 /**
  * versioned-reporter.ts
  * ─────────────────────
- * Custom Playwright Reporter that writes a versioned HTML report after every run.
+ * Custom Playwright Reporter that writes a versioned, evidence-rich HTML report after every run.
  *
- * Output path: specs/<feature-slug>/report-v{N}.html
- * N auto-increments by counting existing report-v*.html files in that directory.
+ * Output:
+ *   specs/<feature-slug>/report-v{N}.html                     the human-readable report
+ *   specs/<feature-slug>/evidence/v{N}/web.manifest.json      the data behind it
+ *   specs/<feature-slug>/evidence/v{N}/shots/*.png            the screenshots it embeds
+ * N is one past the highest existing report-v*.html / evidence/v* (see support/report-render.js).
  *
  * The slug is derived from the spec file name:
  *   tests/e2e/login-test-cases.spec.ts  →  specs/login-test-cases/report-v1.html
+ *
+ * Each test case in the report carries: what it checks (test annotations), the steps it took with
+ * screenshots and highlighted elements (tests/support/evidence.ts), the expected vs actual result,
+ * and — for failures — the error and the final screenshot. Cases with no snap()/check() steps
+ * still get Playwright's automatic screenshot.
  *
  * Also owns test-health tracking: every result is appended to .automaqa/history.json,
  * the quarantine policy is applied, and the report gains a Test health section.
@@ -16,11 +24,14 @@
  *
  * Lifecycle:
  *   onBegin()   — record start time
- *   onTestEnd() — collect result (title, status, duration, retries) in memory
- *   onEnd()     — persist history, apply quarantine, write HTML from in-memory data
+ *   onTestEnd() — collect result, evidence steps and screenshot in memory
+ *   onEnd()     — persist history, apply quarantine, write manifest + HTML
  *
  * Registered in playwright.config.ts as: ['./tests/versioned-reporter.ts']
  * globalTeardown is NOT used — reports are written here in onEnd().
+ *
+ * Mobile (Maestro) results and live-verification findings are added to the same run by
+ * scripts/report/build_report.js (see the test-report skill), which re-renders this file.
  */
 
 import type {
@@ -33,6 +44,19 @@ import type {
 } from '@playwright/test/reporter';
 import * as fs   from 'fs';
 import * as path from 'path';
+
+// Plain JS renderer copied next to this file by /automaqa:setup (single source: plugin scripts/report/render.js)
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const renderer = require('./support/report-render.js') as {
+  render: (m: unknown, o?: { baseDir?: string; embed?: boolean }) => string;
+  mergeManifests: (dirs: string[]) => unknown;
+  nextRun: (specDir: string) => string;
+};
+
+/** Attachment name used by tests/support/evidence.ts. Keep in sync. */
+const STEP_ATTACHMENT = 'automaqa-step';
+// eslint-disable-next-line no-control-regex
+const ANSI = /[[0-9;]*m/g;
 
 import {
   type Store,
@@ -47,14 +71,33 @@ import {
   formatHealthSummary,
 } from './support/flake-store';
 
+interface EvidenceStep {
+  action: string;
+  expected?: string;
+  actual?: string;
+  note?: string;
+  status: string;
+  screenshotFile?: string;
+  refSize?: { w: number; h: number };
+  highlights?: unknown[];
+}
+
 interface TestRecord {
   id:       string;
+  caseId:   string;
   title:    string;
-  status:   string;
+  status:   string;                 // passed | failed | skipped | flaky
   duration: number;
   /** Retries Playwright needed. >0 with status "passed" means it flaked. */
   retries:  number;
   error?:   string;
+  purpose?:  string;
+  expected?: string;
+  specRef?:  string;
+  steps:    EvidenceStep[];
+  /** Playwright's automatic end-of-test screenshot (screenshot: 'on'). */
+  autoShot?: string;
+  trace?:   string;
 }
 
 class VersionedReporter implements Reporter {
@@ -72,13 +115,34 @@ class VersionedReporter implements Reporter {
 
   onTestEnd(test: TestCase, result: TestResult): void {
     const id = testId(test.location.file, suiteTitles(test));
+    const note = (type: string) => test.annotations.find(a => a.type === type)?.description;
+
+    const steps: EvidenceStep[] = [];
+    for (const a of result.attachments) {
+      if (a.name !== STEP_ATTACHMENT || !a.body) continue;
+      try { steps.push(JSON.parse(a.body.toString('utf-8'))); } catch { /* malformed step: skip */ }
+    }
+    const shot  = result.attachments.find(a => a.name === 'screenshot' && a.path);
+    const trace = result.attachments.find(a => a.name === 'trace' && a.path);
+
+    const title  = test.title;
+    const m      = /^\s*(TC[_-]?\d+[A-Za-z0-9_-]*)\s*[—–:-]*\s*(.*)$/i.exec(title);
+    const status = result.status === 'passed' && result.retry > 0 ? 'flaky' : result.status;
+
     const entry: TestRecord = {
       id,
-      title:    test.title,
-      status:   result.status,
+      caseId:   m ? m[1] : `T${this.records.length + 1}`,
+      title:    m && m[2] ? m[2] : title,
+      status,
       duration: result.duration,
       retries:  result.retry,
-      error:    result.error?.message,
+      error:    result.error?.message?.replace(ANSI, ''),
+      purpose:  note('purpose'),
+      expected: note('expected'),
+      specRef:  note('spec'),
+      steps,
+      autoShot: shot?.path,
+      trace:    trace?.path,
     };
 
     // A retried test fires onTestEnd once per attempt. Keep only the final
@@ -105,7 +169,7 @@ class VersionedReporter implements Reporter {
         if (r.status === 'skipped') continue;
         record(store, r.id, {
           at,
-          outcome:  r.status === 'passed' ? 'passed' : 'failed',
+          outcome:  r.status === 'passed' || r.status === 'flaky' ? 'passed' : 'failed',
           duration: r.duration,
           retries:  r.retries,
           ...(ref ? { ref } : {}),
@@ -128,114 +192,73 @@ class VersionedReporter implements Reporter {
 
     const health = this.updateHealth();
 
-    const outDir = path.join('specs', this.suiteName);
-    fs.mkdirSync(outDir, { recursive: true });
+    const specDir = path.join('specs', this.suiteName);
+    fs.mkdirSync(specDir, { recursive: true });
 
-    // Auto-increment version number
-    const existing = fs.readdirSync(outDir).filter(f => /^report-v\d+\.html$/.test(f));
-    const next     = existing.length + 1;
-    const outFile  = path.join(outDir, `report-v${next}.html`);
+    const run     = renderer.nextRun(specDir);                       // "v3"
+    const runDir  = path.join(specDir, 'evidence', run);
+    const shotDir = path.join(runDir, 'shots');
+    fs.mkdirSync(shotDir, { recursive: true });
+    const outFile = path.join(specDir, `report-${run}.html`);
 
-    const total    = this.records.length;
-    const passed   = this.records.filter(r => r.status === 'passed').length;
-    const failed   = this.records.filter(r => r.status === 'failed').length;
-    const skipped  = this.records.filter(r => r.status === 'skipped').length;
-    const flaked   = this.records.filter(r => r.status === 'passed' && r.retries > 0).length;
-    const duration = ((Date.now() - this.startTime) / 1000).toFixed(1);
+    /** Copy a screenshot out of Playwright's output dir (wiped next run); return a manifest-relative path. */
+    const keep = (src: string | undefined, name: string): string | undefined => {
+      if (!src || !fs.existsSync(src)) return undefined;
+      fs.copyFileSync(src, path.join(shotDir, name));
+      return `shots/${name}`;
+    };
 
-    const rows = this.records.map(r => {
-      const badge =
-        r.status === 'passed' && r.retries > 0
-                               ? '<span class="badge flake">FLAKY</span>' :
-        r.status === 'passed'  ? '<span class="badge pass">PASS</span>'  :
-        r.status === 'failed'  ? '<span class="badge fail">FAIL</span>'  :
-                                  '<span class="badge skip">SKIP</span>';
-      const errorRow = r.error
-        ? `<tr class="error-row"><td colspan="4"><pre>${escapeHtml(r.error.slice(0, 400))}</pre></td></tr>`
-        : '';
-      return `
-        <tr>
-          <td>${escapeHtml(r.title)}</td>
-          <td>${badge}</td>
-          <td>${(r.duration / 1000).toFixed(2)}s</td>
-          <td>${r.retries > 0 ? `${r.retries} retry` : ''}${r.error ? ' ⚠' : ''}</td>
-        </tr>${errorRow}`;
-    }).join('');
+    const cases = this.records.map((r, ci) => {
+      const key = `${String(ci + 1).padStart(3, '0')}-${r.caseId.replace(/[^\w-]/g, '')}`;
+      const steps: Array<Record<string, unknown>> = r.steps.map((s, si) => ({
+        action: s.action, expected: s.expected, actual: s.actual, note: s.note, status: s.status,
+        screenshot: keep(s.screenshotFile, `${key}-s${si + 1}.png`),
+        refSize: s.refSize, highlights: s.highlights,
+      }));
+      const finalShot = keep(r.autoShot, `${key}-final.png`);
+      // A step list tells the story; add the end-of-test screenshot to it for failures so the
+      // reader sees the state the app was left in, and use it alone when no steps were recorded.
+      if (finalShot && r.status !== 'passed' && steps.length) {
+        steps.push({ action: 'State of the page when the test ended', status: 'failed', screenshot: finalShot });
+      }
+      const firstLine = r.error?.split('\n').find(l => l.trim());
+      return {
+        id: r.caseId, title: r.title, platform: 'web', source: 'automated',
+        status: r.status, durationMs: r.duration, retries: r.retries,
+        purpose: r.purpose, expected: r.expected, specRef: r.specRef,
+        steps,
+        finalScreenshot: steps.length ? undefined : finalShot,
+        verdict:
+          r.status === 'failed'  ? failureVerdict(steps, firstLine) :
+          r.status === 'flaky'   ? `Passed only after ${r.retries} retry — the result is not reliable.` :
+          r.status === 'skipped' ? 'The test did not run (skipped or quarantined).' :
+          r.expected             ? `Every check passed: ${r.expected}` : undefined,
+        error: r.error,
+        trace: r.trace ? tidyPath(r.trace) : undefined,
+      };
+    });
 
-    const healthHtml = renderHealth(health);
+    const manifest = {
+      schema: 1,
+      feature: this.suiteName,
+      run,
+      title: `${this.suiteName} — test report ${run}`,
+      spec: fs.existsSync(path.join(specDir, 'spec.md')) ? path.join(specDir, 'spec.md').replace(/\\/g, '/') : undefined,
+      generatedAt: new Date().toISOString(),
+      durationMs: Date.now() - this.startTime,
+      environment: { platform: 'web (Playwright)', node: process.version, os: process.platform },
+      cases,
+      bugs: [] as unknown[],
+      health: health ? healthSection(health) : null,
+    };
+    fs.writeFileSync(path.join(runDir, 'web.manifest.json'), JSON.stringify(manifest, null, 2), 'utf-8');
 
-    const flakeBanner = flaked > 0
-      ? `<div class="banner flake-banner">⚠ ${flaked} test(s) passed only after a retry — flaky, not green. See Test health below.</div>`
-      : '';
-
-    const failBanner = failed > 0
-      ? `<div class="banner fail-banner">⛔ ${failed} test(s) FAILED — see rows below</div>`
-      : `<div class="banner pass-banner">✅ All ${total} tests passed</div>`;
-
-    const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Report v${next} — ${this.suiteName}</title>
-<style>
-  body { font-family: system-ui, sans-serif; margin: 2rem; background: #f9fafb; color: #111; }
-  h1   { font-size: 1.4rem; margin-bottom: .5rem; }
-  .meta { font-size: .85rem; color: #666; margin-bottom: 1.5rem; }
-  .cards { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .card  { background: #fff; border-radius: 8px; padding: .8rem 1.4rem; box-shadow: 0 1px 4px rgba(0,0,0,.1); min-width: 90px; text-align: center; }
-  .card .num { font-size: 2rem; font-weight: 700; }
-  .card .lbl { font-size: .75rem; color: #888; text-transform: uppercase; }
-  .pass .num { color: #16a34a; }
-  .fail .num { color: #dc2626; }
-  .skip .num { color: #d97706; }
-  .banner { padding: .8rem 1.2rem; border-radius: 6px; margin-bottom: 1.2rem; font-weight: 600; }
-  .fail-banner { background: #fee2e2; color: #991b1b; }
-  .pass-banner { background: #dcfce7; color: #166534; }
-  table  { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
-  th, td { padding: .65rem 1rem; text-align: left; font-size: .9rem; }
-  th     { background: #f1f5f9; font-weight: 600; font-size: .8rem; text-transform: uppercase; }
-  tr:nth-child(even) { background: #f8fafc; }
-  .badge { padding: .2rem .55rem; border-radius: 4px; font-size: .75rem; font-weight: 700; }
-  .badge.pass { background: #dcfce7; color: #166534; }
-  .badge.fail { background: #fee2e2; color: #991b1b; }
-  .badge.skip { background: #fef9c3; color: #92400e; }
-  .badge.flake { background: #fef3c7; color: #92400e; }
-  .flake-banner { background: #fef3c7; color: #92400e; }
-  .health { margin-top: 2rem; }
-  .health h2 { font-size: 1.1rem; margin-bottom: .4rem; }
-  .health .hint { font-size: .8rem; color: #666; margin: .3rem 0 .8rem; }
-  .health section { margin-bottom: 1.2rem; }
-  .health h3 { font-size: .85rem; text-transform: uppercase; color: #555; margin: 0 0 .4rem; }
-  .health ul { margin: 0; padding-left: 1.1rem; font-size: .85rem; }
-  .health li { margin-bottom: .25rem; }
-  .health .why { color: #666; }
-  .broken h3 { color: #991b1b; }
-  .error-row td { background: #fff7f7; padding: .5rem 1rem; }
-  .error-row pre { margin: 0; font-size: .8rem; color: #b91c1c; white-space: pre-wrap; word-break: break-word; }
-</style>
-</head>
-<body>
-<h1>📋 ${escapeHtml(this.suiteName)} — Report v${next}</h1>
-<div class="meta">Generated: ${new Date().toLocaleString()} &nbsp;|&nbsp; Duration: ${duration}s</div>
-<div class="cards">
-  <div class="card"><div class="num">${total}</div><div class="lbl">Total</div></div>
-  <div class="card pass"><div class="num">${passed}</div><div class="lbl">Passed</div></div>
-  <div class="card fail"><div class="num">${failed}</div><div class="lbl">Failed</div></div>
-  <div class="card skip"><div class="num">${skipped}</div><div class="lbl">Skipped</div></div>
-  <div class="card"><div class="num">${duration}s</div><div class="lbl">Duration</div></div>
-</div>
-${failBanner}
-${flakeBanner}
-<table>
-  <thead><tr><th>Test</th><th>Status</th><th>Duration</th><th>Notes</th></tr></thead>
-  <tbody>${rows}</tbody>
-</table>
-${healthHtml}
-</body>
-</html>`;
-
-    fs.writeFileSync(outFile, html, 'utf-8');
+    // Render from the merged evidence for this run, so live-verification findings
+    // (evidence/live) and any mobile manifest already present are folded in.
+    const merged = renderer.mergeManifests([path.join(specDir, 'evidence', 'live'), runDir]);
+    fs.writeFileSync(outFile, renderer.render(merged, { baseDir: specDir }), 'utf-8');
     console.log(`\n📊 Report written → ${outFile}`);
+    console.log(`   Evidence       → ${runDir}`);
 
     if (health) {
       const text = formatHealthSummary(health.summary);
@@ -249,44 +272,42 @@ ${healthHtml}
   }
 }
 
-/** Render the Test health section, or nothing when the suite is healthy. */
-function renderHealth(
-  health: { summary: HealthSummary; changes: QuarantineChange[] } | null,
-): string {
-  if (!health) return '';
+/** Explain a failure in words: which step, what was expected, what actually happened. */
+function failureVerdict(steps: Array<Record<string, unknown>>, errorLine?: string): string {
+  const i = steps.findIndex(s => s.status === 'failed' && s.expected);
+  if (i === -1) return errorLine?.replace(/^Error:\s*/, '') ?? 'The test failed.';
+  const s = steps[i];
+  const action = String(s.action).replace(/\.+$/, '');
+  return `Step ${i + 1} (${action}) did not behave as expected. Expected: ${s.expected}. ` +
+         `What happened: ${s.actual ?? errorLine ?? 'the check failed'}.`;
+}
+
+/** Relative to the project when it is inside it, absolute otherwise. */
+function tidyPath(p: string): string {
+  const rel = path.relative(process.cwd(), p);
+  return rel.startsWith('..') ? p : rel;
+}
+
+/** Convert the health summary to the manifest's structured form (rendered by report-render.js). */
+function healthSection(
+  health: { summary: HealthSummary; changes: QuarantineChange[] },
+): { line: string; sections: Array<{ title: string; kind?: string; items: Array<{ id: string; reason: string }> }> } | null {
   const { summary, changes } = health;
   const { flakedThisRun, flakyOverTime, consistentlyFailing, quarantined } = summary;
-
   if (!flakedThisRun.length && !flakyOverTime.length && !consistentlyFailing.length
-      && !quarantined.length && !changes.length) return '';
+      && !quarantined.length && !changes.length) return null;
 
-  const list = (title: string, items: string[], cls = '') =>
-    items.length
-      ? `<section class="${cls}"><h3>${escapeHtml(title)}</h3><ul>${items.join('')}</ul></section>`
-      : '';
-
-  const asItems = (verdicts: HealthSummary[keyof HealthSummary]) =>
-    (verdicts as Array<{ id: string; reason: string }>).slice(0, 25).map(
-      v => `<li><code>${escapeHtml(v.id)}</code><br><span class="why">${escapeHtml(v.reason)}</span></li>`,
-    );
-
-  const changeItems = changes.map(
-    c => `<li><strong>${c.action === 'quarantined' ? 'Quarantined' : 'Released'}</strong> <code>${escapeHtml(c.id)}</code><br><span class="why">${escapeHtml(c.reason)}</span></li>`,
-  );
-
-  return `
-<div class="health">
-  <h2>Test health</h2>
-  <div class="hint">
-    Tracked tests: ${summary.totalTracked} &nbsp;|&nbsp;
-    Flake rate: ${(summary.flakeRate * 100).toFixed(1)}%
-  </div>
-  ${list('Changed this run', changeItems)}
-  ${list('Flaked in this run (passed only after a retry)', asItems(flakedThisRun))}
-  ${list('Unreliable over time', asItems(flakyOverTime))}
-  ${list('Consistently failing — real bugs, NOT quarantined', asItems(consistentlyFailing), 'broken')}
-  ${list('Currently quarantined', asItems(quarantined))}
-</div>`;
+  const items = (v: Array<{ id: string; reason: string }>) => v.slice(0, 25).map(x => ({ id: x.id, reason: x.reason }));
+  return {
+    line: `Tracked tests: ${summary.totalTracked} | Flake rate: ${(summary.flakeRate * 100).toFixed(1)}%`,
+    sections: [
+      { title: 'Changed this run', items: changes.map(c => ({ id: c.id, reason: `${c.action === 'quarantined' ? 'Quarantined' : 'Released'} — ${c.reason}` })) },
+      { title: 'Flaked in this run (passed only after a retry)', items: items(flakedThisRun) },
+      { title: 'Unreliable over time', items: items(flakyOverTime) },
+      { title: 'Consistently failing — real bugs, NOT quarantined', kind: 'broken', items: items(consistentlyFailing) },
+      { title: 'Currently quarantined', items: items(quarantined) },
+    ],
+  };
 }
 
 /**
@@ -297,10 +318,6 @@ function renderHealth(
 function suiteTitles(test: TestCase): string[] {
   const file = test.location.file.split(/[\\/]/).pop() ?? '';
   return test.titlePath().filter(t => Boolean(t) && t !== file);
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 export default VersionedReporter;

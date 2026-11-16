@@ -113,6 +113,14 @@ else
   fail "intake parser tests failed"
 fi
 
+echo "==> API credentials are pinned to confirmed hosts"
+if node tests/api-host-pinning.test.js >/dev/null 2>&1; then
+  pass "api-host-pinning.test.js"
+else
+  node tests/api-host-pinning.test.js 2>&1 | tail -12 | sed 's/^/         /'
+  fail "API host-pinning test failed"
+fi
+
 echo "==> The plugin ships no command hooks"
 # The directory refuses hooks of type "command" from organizations that are not Verified.
 if [ -e plugins/automaqa/hooks/hooks.json ]; then

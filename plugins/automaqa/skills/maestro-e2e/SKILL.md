@@ -23,6 +23,7 @@ Follow these steps exactly for whichever mode applies.
 | `automaqa:page-objects` | Step 6 — BEFORE writing flows, to build screen objects under `screens/` |
 | `automaqa:self-healing` | Step 6 — when an element id needs a text fallback |
 | `automaqa:maestro-skill` | Step 6 — when writing YAML flow code |
+| `automaqa:test-report` | Steps 5, 7 and **Step 9 (mandatory final report)** |
 
 ---
 
@@ -130,11 +131,9 @@ For each screen in the flow, complete live verification before writing the YAML 
 
 After live mobile verification, before writing the YAML flow:
 
-1. Create or update `specs/<feature>/report.html`.
-2. Add a **Mobile — [Screen Name]** section documenting all ~20 scenarios:
-   - Scenario ID, description, input, expected behavior (per spec), actual behavior, status (PASS/FAIL/BUG)
-   - For BUG: severity, exact reproduction steps, screenshot path
-3. Bugs found on mobile are added to the top-level **Bugs Found** section of the report.
+1. Invoke **`automaqa:test-report`** and record each scenario in the run's `mobile.manifest.json` (`specs/<feature>/evidence/v{N}/`; create the run folder with `build_report.js <specDir> --init-run` if no Playwright run exists).
+2. For all ~20 scenarios per screen: case ID, description, input, expected (per spec), actual, status, and for each meaningful step a **screenshot with the relevant element highlighted** (`bounds` from `inspect_screen`).
+3. For BUG: severity, impact, exact reproduction steps and the annotated screenshot go in a `bugs` entry — they appear in the **Bugs found** section at the top of the report.
 
 ---
 
@@ -176,7 +175,8 @@ Substitute `<TEST_EMAIL>`, `<TEST_PASSWORD>`, and `<feature>` with actual values
    - Fix the locator or assertion in the YAML
    - Re-run
 3. Repeat the **(Inspect → Update → Run → Verify)** loop until the flow passes.
-4. Add any new bugs discovered during the automated run to `report.html`.
+4. Add any new bugs discovered during the automated run to the manifest's `bugs`.
+5. Have the flow capture evidence: `- takeScreenshot: <EVIDENCE_DIR>/<caseId>-<n>` at each meaningful step, so the final report has a real screenshot per step (see `automaqa:test-report`).
 
 ---
 
@@ -193,11 +193,10 @@ Once the current screen's flow is verified:
 ## Step 9: Final Run and Report
 
 1. Run the complete flow end-to-end to confirm stability.
-2. Finalize `report.html` with:
-   - **Bugs Found** section (top) — every bug with severity, repro steps, screenshot path
-   - Summary table: all ~20 scenarios per screen, expected vs actual, status badges
-3. **If invoked standalone**: present the final report path and summary to the user.
-4. **If invoked from playwright-e2e**: report the mobile test outcome back so it can be included in the consolidated report.
+2. **MANDATORY — build the final report** with `automaqa:test-report`: enrichment pass (summary, per-case `purpose`/`verdict`, `bugs` with severity, impact, repro and annotated screenshot), then
+   `node "${CLAUDE_PLUGIN_ROOT}/scripts/report/build_report.js" specs/<feature> --run v{N}` (`--pdf` on request), then its verification checklist.
+3. **If invoked standalone**: present the report path, totals and top findings to the user.
+4. **If invoked from playwright-e2e**: leave `mobile.manifest.json` in the shared `evidence/v{N}/` folder; playwright-e2e Step 12 builds the one consolidated report.
 
 ---
 
@@ -210,3 +209,4 @@ Once the current screen's flow is verified:
 5. **NO CREDENTIALS IN YAML**: Credentials go in `-e` flags at run time, not inside the YAML file.
 6. **HIDE KEYBOARD**: Always `- hideKeyboard` after inputs in WebView containers before tapping buttons.
 7. **COMPLETE FLOWS**: The final YAML must run end-to-end without manual intervention.
+8. **NO RUN WITHOUT A REPORT**: A mobile run ends with the report file (screenshots + highlights), not terminal output.
